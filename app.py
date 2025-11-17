@@ -10,7 +10,7 @@ import json
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 
-# Force PostgreSQL - no fallback to SQLite
+# Use PostgreSQL from Render
 database_url = os.environ.get('DATABASE_URL')
 
 if not database_url:
@@ -21,6 +21,7 @@ if database_url.startswith('postgres://'):
     database_url = database_url.replace('postgres://', 'postgresql://', 1)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+print(f"✅ Using PostgreSQL with psycopg3")
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
