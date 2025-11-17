@@ -325,7 +325,16 @@ def edit_ad(ad_id):
             print(f"Error updating listing: {e}")
             flash('Error updating your ad. Please try again.', 'error')
     
-    return render_template('edit_ad.html', listing=listing)
+    # Prepare images for template - FIXED THIS PART
+    images = []
+    if listing.images:
+        try:
+            images = json.loads(listing.images)
+        except:
+            images = []
+    
+    # Pass both 'listing' and 'ad' variables to template for compatibility
+    return render_template('edit_ad.html', listing=listing, ad=listing, images=images)
 
 @app.route('/delete_ad/<int:ad_id>', methods=['POST'])
 def delete_ad(ad_id):
