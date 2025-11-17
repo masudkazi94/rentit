@@ -275,6 +275,89 @@ def search():
         print(f"Search error: {e}")
         return render_template('search.html', listings=[], query=query, location=location, category=category)
 
+@app.route('/edit_ad/<int:ad_id>', methods=['GET', 'POST'])
+def edit_ad(ad_id):
+    if 'user_id' not in session:
+        flash('Please login to edit your ad', 'error')
+        return redirect(url_for('login'))
+    
+    listing = Listing.query.get_or_404(ad_id)
+    
+    # Check if the current user owns this listing
+    if listing.user_id != session['user_id']:
+        flash('You can only edit your own ads', 'error')
+        return redirect(url_for('my_ads'))
+    
+    if request.method == 'POST':
+        try:
+            listing.title = request.form.get('title')
+            listing.description = request.form.get('description')
+            listing.category = request.form.get('category')
+            listing.price = float(request.form.get('price'))
+            listing.rental_period = request.form.get('rental_period')
+            listing.location = request.form.get('location', 'Gadhinglaj')
+            listing.contact_number = request.form.get('contact_number')
+            
+            # Handle image updates
+            image_files = request.files.getlist('images')
+            uploaded_images = []
+            
+            for image in image_files:
+                if image and allowed_file(image.filename):
+                    filename = secure_filename(image.filename)
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_")
+                    filename = timestamp + filename
+                    image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                    image.save(image_path)
+                    uploaded_images.append(filename)
+            
+            if uploaded_images:
+                # Merge with existing images
+                existing_images = json.loads(listing.images) if listing.images else []
+                existing_images.extend(uploaded_images)
+                listing.images = json.dumps(existing_images)
+            
+            db.session.commit()
+            flash('Ad updated successfully!', 'success')
+            return redirect(url_for('my_ads'))
+            
+        except Exception as e:
+            print(f"Error updating listing: {e}")
+            flash('Error updating your ad. Please try again.', 'error')
+    
+    return render_template('edit_ad.html', listing=listing)
+
+@app.route('/delete_ad/<int:ad_id>', methods=['POST'])
+def delete_ad(ad_id):
+    if 'user_id' not in session:
+        flash('Please login to delete your ad', 'error')
+        return redirect(url_for('login'))
+    
+    listing = Listing.query.get_or_404(ad_id)
+    
+    # Check if the current user owns this listing
+    if listing.user_id != session['user_id']:
+        flash('You can only delete your own ads', 'error')
+        return redirect(url_for('my_ads'))
+    
+    try:
+        # Delete associated images from filesystem
+        if listing.images:
+            images = json.loads(listing.images)
+            for image in images:
+                image_path = os.path.join(app.config['UPLOAD_FOLDER'], image)
+                if os.path.exists(image_path):
+                    os.remove(image_path)
+        
+        db.session.delete(listing)
+        db.session.commit()
+        flash('Ad deleted successfully!', 'success')
+    except Exception as e:
+        print(f"Error deleting listing: {e}")
+        flash('Error deleting your ad. Please try again.', 'error')
+    
+    return redirect(url_for('my_ads'))
+
 # Template filters
 @app.template_filter('time_ago')
 def time_ago_filter(dt):
