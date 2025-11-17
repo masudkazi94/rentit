@@ -10,11 +10,17 @@ import json
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 
-# Use Render's PostgreSQL or fallback to SQLite
-if os.environ.get("DATABASE_URL"):
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL').replace("postgres://", "postgresql://", 1)
-else:
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///marketplace.db'
+# Force PostgreSQL - no fallback to SQLite
+database_url = os.environ.get('DATABASE_URL')
+
+if not database_url:
+    raise ValueError("DATABASE_URL environment variable is required")
+
+# Fix the URL format for SQLAlchemy
+if database_url.startswith('postgres://'):
+    database_url = database_url.replace('postgres://', 'postgresql://', 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
@@ -325,7 +331,7 @@ def edit_ad(ad_id):
             print(f"Error updating listing: {e}")
             flash('Error updating your ad. Please try again.', 'error')
     
-    # Prepare images for template - FIXED THIS PART
+    # Prepare images for template
     images = []
     if listing.images:
         try:
