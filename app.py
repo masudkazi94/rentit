@@ -1,4 +1,5 @@
 import os
+import time
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -53,41 +54,68 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# Initialize database tables
-with app.app_context():
-    db.create_all()
-    # Create sample user if no users exist
-    if not User.query.first():
-        sample_user = User(
-            username='demo',
-            email='demo@example.com',
-            password=generate_password_hash('password'),
-            phone='1234567890'
-        )
-        db.session.add(sample_user)
-        db.session.commit()
-        print("Database initialized with sample user")
+def init_database():
+    """Initialize database with retry logic"""
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            with app.app_context():
+                db.create_all()
+                # Create sample user if no users exist
+                if not User.query.first():
+                    sample_user = User(
+                        username='demo',
+                        email='demo@example.com',
+                        password=generate_password_hash('password'),
+                        phone='1234567890'
+                    )
+                    db.session.add(sample_user)
+                    db.session.commit()
+                    print("✅ Database initialized with sample user")
+                else:
+                    print("✅ Database already initialized")
+                return True
+        except Exception as e:
+            print(f"❌ Database initialization attempt {attempt + 1} failed: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(2)  # Wait 2 seconds before retry
+            else:
+                print("❌ All database initialization attempts failed")
+                return False
+
+# Initialize database when app starts
+print("🔄 Initializing database...")
+if init_database():
+    print("✅ Database initialization successful")
+else:
+    print("❌ Database initialization failed")
 
 # Routes
 @app.route('/')
 def index():
     try:
+        # Try to get listings, but handle case where tables might not exist yet
         featured_listings = Listing.query.filter_by(is_featured=True).order_by(Listing.created_at.desc()).limit(2).all()
         recent_listings = Listing.query.order_by(Listing.created_at.desc()).limit(8).all()
         return render_template('index.html', featured_listings=featured_listings, recent_listings=recent_listings)
     except Exception as e:
-        print(f"Error in index route: {e}")
+        print(f"⚠️ Error loading listings: {e}")
         # Return empty listings if there's an error
         return render_template('index.html', featured_listings=[], recent_listings=[])
 
-# Keep all your other routes the same (my_ads, rent_out, login, register, etc.)
 @app.route('/my_ads')
 def my_ads():
     if 'user_id' not in session:
         flash('Please login to view your ads', 'error')
         return redirect(url_for('login'))
-    user_listings = Listing.query.filter_by(user_id=session['user_id']).order_by(Listing.created_at.desc()).all()
-    return render_template('my_ads.html', listings=user_listings)
+    
+    try:
+        user_listings = Listing.query.filter_by(user_id=session['user_id']).order_by(Listing.created_at.desc()).all()
+        return render_template('my_ads.html', listings=user_listings)
+    except Exception as e:
+        print(f"Error loading user ads: {e}")
+        flash('Error loading your ads', 'error')
+        return render_template('my_ads.html', listings=[])
 
 @app.route('/rent_out', methods=['GET', 'POST'])
 def rent_out():
@@ -120,23 +148,28 @@ def rent_out():
                 image.save(image_path)
                 uploaded_images.append(filename)
         
-        new_listing = Listing(
-            title=title,
-            description=description,
-            price=float(price),
-            rental_period=rental_period,
-            category=category,
-            location=location,
-            images=json.dumps(uploaded_images) if uploaded_images else '[]',
-            contact_number=contact_number,
-            user_id=session['user_id']
-        )
-        
-        db.session.add(new_listing)
-        db.session.commit()
-        
-        flash('Your rental ad has been posted successfully!', 'success')
-        return redirect(url_for('my_ads'))
+        try:
+            new_listing = Listing(
+                title=title,
+                description=description,
+                price=float(price),
+                rental_period=rental_period,
+                category=category,
+                location=location,
+                images=json.dumps(uploaded_images) if uploaded_images else '[]',
+                contact_number=contact_number,
+                user_id=session['user_id']
+            )
+            
+            db.session.add(new_listing)
+            db.session.commit()
+            
+            flash('Your rental ad has been posted successfully!', 'success')
+            return redirect(url_for('my_ads'))
+        except Exception as e:
+            print(f"Error creating listing: {e}")
+            flash('Error creating your ad. Please try again.', 'error')
+            return render_template('sell.html')
     
     return render_template('sell.html')
 
@@ -146,15 +179,19 @@ def login():
         email = request.form.get('email')
         password = request.form.get('password')
         
-        user = User.query.filter_by(email=email).first()
-        
-        if user and check_password_hash(user.password, password):
-            session['user_id'] = user.id
-            session['username'] = user.username
-            flash('Login successful!', 'success')
-            return redirect(url_for('index'))
-        else:
-            flash('Invalid email or password', 'error')
+        try:
+            user = User.query.filter_by(email=email).first()
+            
+            if user and check_password_hash(user.password, password):
+                session['user_id'] = user.id
+                session['username'] = user.username
+                flash('Login successful!', 'success')
+                return redirect(url_for('index'))
+            else:
+                flash('Invalid email or password', 'error')
+        except Exception as e:
+            print(f"Login error: {e}")
+            flash('Login error. Please try again.', 'error')
     
     return render_template('login.html')
 
@@ -171,26 +208,30 @@ def register():
             flash('Passwords do not match', 'error')
             return render_template('register.html')
         
-        if User.query.filter_by(email=email).first():
-            flash('Email already registered', 'error')
-            return render_template('register.html')
-        
-        if User.query.filter_by(username=username).first():
-            flash('Username already taken', 'error')
-            return render_template('register.html')
-        
-        new_user = User(
-            username=username,
-            email=email,
-            password=generate_password_hash(password),
-            phone=phone
-        )
-        
-        db.session.add(new_user)
-        db.session.commit()
-        
-        flash('Registration successful! Please login.', 'success')
-        return redirect(url_for('login'))
+        try:
+            if User.query.filter_by(email=email).first():
+                flash('Email already registered', 'error')
+                return render_template('register.html')
+            
+            if User.query.filter_by(username=username).first():
+                flash('Username already taken', 'error')
+                return render_template('register.html')
+            
+            new_user = User(
+                username=username,
+                email=email,
+                password=generate_password_hash(password),
+                phone=phone
+            )
+            
+            db.session.add(new_user)
+            db.session.commit()
+            
+            flash('Registration successful! Please login.', 'success')
+            return redirect(url_for('login'))
+        except Exception as e:
+            print(f"Registration error: {e}")
+            flash('Registration error. Please try again.', 'error')
     
     return render_template('register.html')
 
@@ -206,29 +247,33 @@ def search():
     location = request.args.get('location', 'Gadhinglaj')
     category = request.args.get('category', '')
     
-    listings_query = Listing.query
-    
-    if query:
-        listings_query = listings_query.filter(
-            db.or_(
-                Listing.title.ilike(f'%{query}%'),
-                Listing.description.ilike(f'%{query}%')
+    try:
+        listings_query = Listing.query
+        
+        if query:
+            listings_query = listings_query.filter(
+                db.or_(
+                    Listing.title.ilike(f'%{query}%'),
+                    Listing.description.ilike(f'%{query}%')
+                )
             )
-        )
-    
-    if location and location != 'all':
-        listings_query = listings_query.filter(Listing.location == location)
-    
-    if category and category != 'all':
-        listings_query = listings_query.filter(Listing.category == category)
-    
-    listings = listings_query.order_by(Listing.created_at.desc()).all()
-    
-    return render_template('search.html', 
-                         listings=listings, 
-                         query=query,
-                         location=location,
-                         category=category)
+        
+        if location and location != 'all':
+            listings_query = listings_query.filter(Listing.location == location)
+        
+        if category and category != 'all':
+            listings_query = listings_query.filter(Listing.category == category)
+        
+        listings = listings_query.order_by(Listing.created_at.desc()).all()
+        
+        return render_template('search.html', 
+                             listings=listings, 
+                             query=query,
+                             location=location,
+                             category=category)
+    except Exception as e:
+        print(f"Search error: {e}")
+        return render_template('search.html', listings=[], query=query, location=location, category=category)
 
 # Template filters
 @app.template_filter('time_ago')
@@ -282,7 +327,6 @@ def not_found_error(error):
 
 @app.errorhandler(500)
 def internal_error(error):
-    db.session.rollback()
     return render_template('500.html'), 500
 
 if __name__ == '__main__':
