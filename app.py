@@ -16,9 +16,12 @@ database_url = os.environ.get('DATABASE_URL')
 if not database_url:
     raise ValueError("DATABASE_URL environment variable is required")
 
-# Fix the URL format for SQLAlchemy
-if database_url.startswith('postgres://'):
-    database_url = database_url.replace('postgres://', 'postgresql://', 1)
+# Fix the URL format for SQLAlchemy + force psycopg3
+if database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql+psycopg://", 1)
+elif database_url.startswith("postgresql://"):
+    database_url = database_url.replace("postgresql://", "postgresql+psycopg://", 1)
+
 
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 print(f"✅ Using PostgreSQL with psycopg3")
