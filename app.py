@@ -134,7 +134,7 @@ def rent_out():
         
         if not all([title, description, category, price, rental_period, contact_number]):
             flash('Please fill all required fields', 'error')
-            return render_template('sell.html')
+            return render_template('rent_out.html')
         
         image_files = request.files.getlist('images')
         uploaded_images = []
@@ -169,9 +169,9 @@ def rent_out():
         except Exception as e:
             print(f"Error creating listing: {e}")
             flash('Error creating your ad. Please try again.', 'error')
-            return render_template('sell.html')
+            return render_template('rent_out.html')
     
-    return render_template('sell.html')
+    return render_template('rent_out.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
