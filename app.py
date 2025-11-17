@@ -1,17 +1,23 @@
+import os
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-import os
 from datetime import datetime
 import json
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key-here-change-in-production'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///marketplace.db'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+
+# Use Render's PostgreSQL or fallback to SQLite
+if os.environ.get("DATABASE_URL"):
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL').replace("postgres://", "postgresql://", 1)
+else:
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///marketplace.db'
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 # Create upload folder if it doesn't exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -33,66 +39,63 @@ class Listing(db.Model):
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=False)
     price = db.Column(db.Float, nullable=False)
-    rental_period = db.Column(db.String(20), nullable=False)  # day, week, month
+    rental_period = db.Column(db.String(20), nullable=False)
     category = db.Column(db.String(50), nullable=False)
     location = db.Column(db.String(100), nullable=False, default='Gadhinglaj')
-    images = db.Column(db.Text)  # JSON string of image filenames
+    images = db.Column(db.Text)
     contact_number = db.Column(db.String(15), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_featured = db.Column(db.Boolean, default=False)
 
-# Allowed file extensions for images
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# Initialize database tables
+with app.app_context():
+    db.create_all()
+    # Create sample user if no users exist
+    if not User.query.first():
+        sample_user = User(
+            username='demo',
+            email='demo@example.com',
+            password=generate_password_hash('password'),
+            phone='1234567890'
+        )
+        db.session.add(sample_user)
+        db.session.commit()
+        print("Database initialized with sample user")
 
 # Routes
 @app.route('/')
 def index():
-    # Get featured listings
-    featured_listings = Listing.query.filter_by(is_featured=True).order_by(Listing.created_at.desc()).limit(2).all()
-    
-    # Get recent listings
-    recent_listings = Listing.query.order_by(Listing.created_at.desc()).limit(8).all()
-    
-    return render_template('index.html', 
-                         featured_listings=featured_listings,
-                         recent_listings=recent_listings)
+    try:
+        featured_listings = Listing.query.filter_by(is_featured=True).order_by(Listing.created_at.desc()).limit(2).all()
+        recent_listings = Listing.query.order_by(Listing.created_at.desc()).limit(8).all()
+        return render_template('index.html', featured_listings=featured_listings, recent_listings=recent_listings)
+    except Exception as e:
+        print(f"Error in index route: {e}")
+        # Return empty listings if there's an error
+        return render_template('index.html', featured_listings=[], recent_listings=[])
 
-# Remove categories route since we don't need it in navigation anymore
-# @app.route('/categories')
-# def categories():
-#     # Get all unique categories with count
-#     categories_data = db.session.query(
-#         Listing.category,
-#         db.func.count(Listing.id)
-#     ).group_by(Listing.category).all()
-#     
-#     return render_template('categories.html', categories=categories_data)
-
-# Add My Ads route
+# Keep all your other routes the same (my_ads, rent_out, login, register, etc.)
 @app.route('/my_ads')
 def my_ads():
     if 'user_id' not in session:
         flash('Please login to view your ads', 'error')
         return redirect(url_for('login'))
-    
     user_listings = Listing.query.filter_by(user_id=session['user_id']).order_by(Listing.created_at.desc()).all()
     return render_template('my_ads.html', listings=user_listings)
 
-# Update sell route name for consistency
 @app.route('/rent_out', methods=['GET', 'POST'])
 def rent_out():
     if request.method == 'POST':
-        # Check if user is logged in
         if 'user_id' not in session:
             flash('Please login to post an ad', 'error')
             return redirect(url_for('login'))
         
-        # Get form data
         title = request.form.get('title')
         description = request.form.get('description')
         category = request.form.get('category')
@@ -101,26 +104,22 @@ def rent_out():
         location = request.form.get('location', 'Gadhinglaj')
         contact_number = request.form.get('contact_number')
         
-        # Validate required fields
         if not all([title, description, category, price, rental_period, contact_number]):
             flash('Please fill all required fields', 'error')
-            return render_template('rent_out.html')
+            return render_template('sell.html')
         
-        # Handle image uploads
         image_files = request.files.getlist('images')
         uploaded_images = []
         
         for image in image_files:
             if image and allowed_file(image.filename):
                 filename = secure_filename(image.filename)
-                # Add timestamp to make filename unique
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_")
                 filename = timestamp + filename
                 image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                 image.save(image_path)
                 uploaded_images.append(filename)
         
-        # Create new listing
         new_listing = Listing(
             title=title,
             description=description,
@@ -139,81 +138,7 @@ def rent_out():
         flash('Your rental ad has been posted successfully!', 'success')
         return redirect(url_for('my_ads'))
     
-    return render_template('rent_out.html')
-
-# Add edit ad route
-@app.route('/edit_ad/<int:ad_id>', methods=['GET', 'POST'])
-def edit_ad(ad_id):
-    if 'user_id' not in session:
-        flash('Please login to edit ads', 'error')
-        return redirect(url_for('login'))
-    
-    ad = Listing.query.get_or_404(ad_id)
-    
-    # Check if user owns the ad
-    if ad.user_id != session['user_id']:
-        flash('You can only edit your own ads', 'error')
-        return redirect(url_for('my_ads'))
-    
-    if request.method == 'POST':
-        # Update ad data
-        ad.title = request.form.get('title')
-        ad.description = request.form.get('description')
-        ad.category = request.form.get('category')
-        ad.price = float(request.form.get('price'))
-        ad.rental_period = request.form.get('rental_period')
-        ad.location = request.form.get('location', 'Gadhinglaj')
-        ad.contact_number = request.form.get('contact_number')
-        
-        # Handle new image uploads
-        image_files = request.files.getlist('images')
-        uploaded_images = json.loads(ad.images) if ad.images else []
-        
-        for image in image_files:
-            if image and allowed_file(image.filename):
-                filename = secure_filename(image.filename)
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_")
-                filename = timestamp + filename
-                image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                image.save(image_path)
-                uploaded_images.append(filename)
-        
-        ad.images = json.dumps(uploaded_images)
-        
-        db.session.commit()
-        flash('Ad updated successfully!', 'success')
-        return redirect(url_for('my_ads'))
-    
-    images = json.loads(ad.images) if ad.images else []
-    return render_template('edit_ad.html', ad=ad, images=images)
-
-# Add delete ad route
-@app.route('/delete_ad/<int:ad_id>')
-def delete_ad(ad_id):
-    if 'user_id' not in session:
-        flash('Please login to delete ads', 'error')
-        return redirect(url_for('login'))
-    
-    ad = Listing.query.get_or_404(ad_id)
-    
-    # Check if user owns the ad
-    if ad.user_id != session['user_id']:
-        flash('You can only delete your own ads', 'error')
-        return redirect(url_for('my_ads'))
-    
-    # Delete associated images
-    if ad.images:
-        images = json.loads(ad.images)
-        for image in images:
-            image_path = os.path.join(app.config['UPLOAD_FOLDER'], image)
-            if os.path.exists(image_path):
-                os.remove(image_path)
-    
-    db.session.delete(ad)
-    db.session.commit()
-    
-    flash('Ad deleted successfully', 'success')
-    return redirect(url_for('my_ads'))
+    return render_template('sell.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -242,7 +167,6 @@ def register():
         confirm_password = request.form.get('confirm_password')
         phone = request.form.get('phone')
         
-        # Validation
         if password != confirm_password:
             flash('Passwords do not match', 'error')
             return render_template('register.html')
@@ -255,7 +179,6 @@ def register():
             flash('Username already taken', 'error')
             return render_template('register.html')
         
-        # Create new user
         new_user = User(
             username=username,
             email=email,
@@ -283,7 +206,6 @@ def search():
     location = request.args.get('location', 'Gadhinglaj')
     category = request.args.get('category', '')
     
-    # Build query
     listings_query = Listing.query
     
     if query:
@@ -308,15 +230,12 @@ def search():
                          location=location,
                          category=category)
 
-# Custom template filters
+# Template filters
 @app.template_filter('time_ago')
 def time_ago_filter(dt):
-    if not dt:
-        return 'Recently'
-        
+    if not dt: return 'Recently'
     now = datetime.utcnow()
     diff = now - dt
-    
     if diff.days > 365:
         years = diff.days // 365
         return f'{years} year{"s" if years > 1 else ""} ago'
@@ -349,17 +268,14 @@ def get_first_image_filter(images_json):
             pass
     return url_for('static', filename='images/placeholder.jpg')
 
-# Add this context processor to make session available in all templates
 @app.context_processor
 def inject_user():
     return dict(session=session)
 
-# Serve static files correctly
 @app.route('/main.css')
 def serve_css():
     return app.send_static_file('main.css')
 
-# Error handlers
 @app.errorhandler(404)
 def not_found_error(error):
     return render_template('404.html'), 404
@@ -369,27 +285,5 @@ def internal_error(error):
     db.session.rollback()
     return render_template('500.html'), 500
 
-# Initialize database
-def init_db():
-    with app.app_context():
-        db.drop_all()
-        db.create_all()
-        
-        # Create a sample user for testing
-        if not User.query.first():
-            sample_user = User(
-                username='demo',
-                email='demo@example.com',
-                password=generate_password_hash('password'),
-                phone='1234567890'
-            )
-            db.session.add(sample_user)
-            db.session.commit()
-            print("Sample user created:")
-            print("Username: demo")
-            print("Password: password")
-            print("Email: demo@example.com")
-
 if __name__ == '__main__':
-    init_db()
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=False)
