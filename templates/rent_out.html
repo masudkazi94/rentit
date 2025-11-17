@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rent Item - Marketplace</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-content">
+            <a href="{{ url_for('index') }}" class="nav-brand">RentIt</a>
+            <div class="nav-links">
+                <a href="{{ url_for('index') }}" class="nav-link">Home</a>
+                <a href="{{ url_for('rent_out') }}" class="nav-link active">Rent Out</a>
+                {% if session.user_id %}
+                    <a href="{{ url_for('my_ads') }}" class="nav-link">My Ads</a>
+                    <a href="{{ url_for('logout') }}" class="nav-link">Logout ({{ session.username }})</a>
+                {% else %}
+                    <a href="{{ url_for('login') }}" class="nav-link">Login</a>
+                    <a href="{{ url_for('register') }}" class="nav-link">Register</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="form-container">
+            <h2 class="form-title">Rent Out Your Item</h2>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="flash-{{ category }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+            
+            <form method="POST" enctype="multipart/form-data">
+                <!-- Image Upload Section -->
+                <div class="form-group">
+                    <label class="form-label">Upload Images</label>
+                    <div class="image-upload-container" onclick="document.getElementById('images').click()">
+                        <div class="image-upload-placeholder">
+                            <span>📷 Click to add images</span>
+                            <input type="file" id="images" name="images" multiple accept="image/*" style="display: none;" onchange="previewImages()">
+                        </div>
+                        <div class="uploaded-images" id="uploaded-images">
+                            <!-- Uploaded images will appear here -->
+                        </div>
+                    </div>
+                    <p class="form-hint">Add up to 8 photos. The first one will be your cover photo.</p>
+                </div>
+
+                <!-- Item Details -->
+                <div class="form-group">
+                    <label class="form-label">Title *</label>
+                    <input type="text" name="title" class="form-input" placeholder="Enter a clear title for your item" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Description *</label>
+                    <textarea name="description" class="form-textarea" placeholder="Describe your item in detail (condition, features, etc.)" required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Category *</label>
+                    <select name="category" class="form-select" required>
+                        <option value="">Select Category</option>
+                        <option value="electronics">Electronics</option>
+                        <option value="furniture">Furniture</option>
+                        <option value="vehicles">Vehicles</option>
+                        <option value="property">Property</option>
+                        <option value="tools">Tools & Equipment</option>
+                        <option value="clothing">Clothing</option>
+                        <option value="sports">Sports Equipment</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Rental Price *</label>
+                    <div style="position: relative;">
+                        <span style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #666; font-weight: 500;">₹</span>
+                        <input type="number" name="price" class="form-input" placeholder="Enter rental price" required style="padding-left: 30px;">
+                    </div>
+                    
+                    <label class="form-label" style="margin-top: 15px;">Rental Period *</label>
+                    <div class="rental-options">
+                        <label class="rental-option">
+                            <input type="radio" name="rental_period" value="day" required>
+                            <span>Per Day</span>
+                        </label>
+                        <label class="rental-option">
+                            <input type="radio" name="rental_period" value="week">
+                            <span>Per Week</span>
+                        </label>
+                        <label class="rental-option">
+                            <input type="radio" name="rental_period" value="month">
+                            <span>Per Month</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Location -->
+                <div class="form-group">
+                    <label class="form-label">Location *</label>
+                    <select name="location" class="form-select" required>
+                        <option value="Gadhinglaj">Gadhinglaj</option>
+                        <option value="Other">Other Location</option>
+                    </select>
+                </div>
+
+                <!-- Contact Information -->
+                <div class="form-group">
+                    <label class="form-label">Contact Number *</label>
+                    <input type="tel" name="contact_number" class="form-input" placeholder="Your contact number" required>
+                </div>
+
+                <button type="submit" class="btn-primary btn-full">Post Your Rental Ad</button>
+            </form>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="#" class="footer-link">About</a>
+            <a href="#" class="footer-link">Contact</a>
+            <a href="#" class="footer-link">Privacy Policy</a>
+            <a href="#" class="footer-link">Terms of Service</a>
+        </div>
+        <p>&copy; 2025 RentIt. All rights reserved.</p>
+    </footer>
+
+    <script>
+        function previewImages() {
+            const input = document.getElementById('images');
+            const preview = document.getElementById('uploaded-images');
+            preview.innerHTML = '';
+            
+            if (input.files) {
+                Array.from(input.files).forEach(file => {
+                    if (file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            const img = document.createElement('img');
+                            img.src = e.target.result;
+                            img.className = 'uploaded-image';
+                            preview.appendChild(img);
+                        }
+                        reader.readAsDataURL(file);
+                    }
+                });
+            }
+        }
+    </script>
+</body>
+</html>

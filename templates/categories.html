@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Categories - Marketplace</title>
+    <link rel="stylesheet" href="main.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-content">
+            <a href="{{ url_for('index') }}" class="nav-brand">RentIt</a>
+            <div class="nav-links">
+                <a href="{{ url_for('index') }}" class="nav-link">Home</a>
+                <a href="{{ url_for('rent_out') }}" class="nav-link">Rent Out</a>
+                {% if session.user_id %}
+                    <a href="{{ url_for('my_ads') }}" class="nav-link active">My Ads</a>
+                    <a href="{{ url_for('logout') }}" class="nav-link">Logout ({{ session.username }})</a>
+                {% else %}
+                    <a href="{{ url_for('login') }}" class="nav-link">Login</a>
+                    <a href="{{ url_for('register') }}" class="nav-link">Register</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container">
+        <div class="section-header">
+            <h1 class="section-title">ALL CATEGORIES</h1>
+        </div>
+
+        <div class="categories-grid">
+            <div class="category-card">
+                <div class="category-icon">🚗</div>
+                <h3 class="category-title">Cars</h3>
+                <p class="category-count">1,234 ads</p>
+            </div>
+
+            <div class="category-card">
+                <div class="category-icon">📱</div>
+                <h3 class="category-title">Electronics</h3>
+                <p class="category-count">856 ads</p>
+            </div>
+
+            <div class="category-card">
+                <div class="category-icon">🏠</div>
+                <h3 class="category-title">Property</h3>
+                <p class="category-count">543 ads</p>
+            </div>
+
+            <div class="category-card">
+                <div class="category-icon">🛋️</div>
+                <h3 class="category-title">Furniture</h3>
+                <p class="category-count">321 ads</p>
+            </div>
+
+            <div class="category-card">
+                <div class="category-icon">👕</div>
+                <h3 class="category-title">Fashion</h3>
+                <p class="category-count">789 ads</p>
+            </div>
+
+            <div class="category-card">
+                <div class="category-icon">📚</div>
+                <h3 class="category-title">Books</h3>
+                <p class="category-count">234 ads</p>
+            </div>
+
+            <div class="category-card">
+                <div class="category-icon">⚽</div>
+                <h3 class="category-title">Sports</h3>
+                <p class="category-count">167 ads</p>
+            </div>
+
+            <div class="category-card">
+                <div class="category-icon">🎮</div>
+                <h3 class="category-title">Games</h3>
+                <p class="category-count">198 ads</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="#" class="footer-link">About</a>
+            <a href="#" class="footer-link">Contact</a>
+            <a href="#" class="footer-link">Privacy Policy</a>
+            <a href="#" class="footer-link">Terms of Service</a>
+        </div>
+        <p>&copy; 2025 Marketplace. All rights reserved.</p>
+    </footer>
+</body>
+</html>

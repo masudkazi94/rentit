@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Ad - RentIt</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-content">
+            <a href="{{ url_for('index') }}" class="nav-brand">RentIt</a>
+            <div class="nav-links">
+                <a href="{{ url_for('index') }}" class="nav-link">Home</a>
+                <a href="{{ url_for('rent_out') }}" class="nav-link">Rent Out</a>
+                <a href="{{ url_for('my_ads') }}" class="nav-link">My Ads</a>
+                <a href="{{ url_for('logout') }}" class="nav-link">Logout ({{ session.username }})</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="form-container">
+            <h2 class="form-title">Edit Your Rental Ad</h2>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="flash-{{ category }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+            
+            <form method="POST" enctype="multipart/form-data">
+                <!-- Current Images -->
+                <div class="form-group">
+                    <label class="form-label">Current Images</label>
+                    <div class="uploaded-images">
+                        {% for image in images %}
+                            <img src="{{ url_for('static', filename='uploads/' + image) }}" alt="Current image" class="uploaded-image">
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Add More Images -->
+                <div class="form-group">
+                    <label class="form-label">Add More Images</label>
+                    <div class="image-upload-container" onclick="document.getElementById('images').click()">
+                        <div class="image-upload-placeholder">
+                            <span>📷 Click to add more images</span>
+                            <input type="file" id="images" name="images" multiple accept="image/*" style="display: none;" onchange="previewImages()">
+                        </div>
+                        <div class="uploaded-images" id="uploaded-images">
+                            <!-- New uploaded images will appear here -->
+                        </div>
+                    </div>
+                    <p class="form-hint">Add up to 8 photos total. The first one will be your cover photo.</p>
+                </div>
+
+                <!-- Item Details -->
+                <div class="form-group">
+                    <label class="form-label">Title *</label>
+                    <input type="text" name="title" class="form-input" value="{{ ad.title }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Description *</label>
+                    <textarea name="description" class="form-textarea" required>{{ ad.description }}</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Category *</label>
+                    <select name="category" class="form-select" required>
+                        <option value="">Select Category</option>
+                        <option value="electronics" {% if ad.category == 'electronics' %}selected{% endif %}>Electronics</option>
+                        <option value="furniture" {% if ad.category == 'furniture' %}selected{% endif %}>Furniture</option>
+                        <option value="vehicles" {% if ad.category == 'vehicles' %}selected{% endif %}>Vehicles</option>
+                        <option value="property" {% if ad.category == 'property' %}selected{% endif %}>Property</option>
+                        <option value="tools" {% if ad.category == 'tools' %}selected{% endif %}>Tools & Equipment</option>
+                        <option value="clothing" {% if ad.category == 'clothing' %}selected{% endif %}>Clothing</option>
+                        <option value="sports" {% if ad.category == 'sports' %}selected{% endif %}>Sports Equipment</option>
+                        <option value="other" {% if ad.category == 'other' %}selected{% endif %}>Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Rental Price *</label>
+                    <input type="number" name="price" class="form-input" value="{{ ad.price }}" required>
+                    
+                    <label class="form-label" style="margin-top: 15px;">Rental Period *</label>
+                    <div class="rental-options">
+                        <label class="rental-option {% if ad.rental_period == 'day' %}selected{% endif %}">
+                            <input type="radio" name="rental_period" value="day" {% if ad.rental_period == 'day' %}checked{% endif %} required>
+                            <span>Per Day</span>
+                        </label>
+                        <label class="rental-option {% if ad.rental_period == 'week' %}selected{% endif %}">
+                            <input type="radio" name="rental_period" value="week" {% if ad.rental_period == 'week' %}checked{% endif %}>
+                            <span>Per Week</span>
+                        </label>
+                        <label class="rental-option {% if ad.rental_period == 'month' %}selected{% endif %}">
+                            <input type="radio" name="rental_period" value="month" {% if ad.rental_period == 'month' %}checked{% endif %}>
+                            <span>Per Month</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Location -->
+                <div class="form-group">
+                    <label class="form-label">Location *</label>
+                    <select name="location" class="form-select" required>
+                        <option value="Gadhinglaj" {% if ad.location == 'Gadhinglaj' %}selected{% endif %}>Gadhinglaj</option>
+                        <option value="Other" {% if ad.location == 'Other' %}selected{% endif %}>Other Location</option>
+                    </select>
+                </div>
+
+                <!-- Contact Information -->
+                <div class="form-group">
+                    <label class="form-label">Contact Number *</label>
+                    <input type="tel" name="contact_number" class="form-input" value="{{ ad.contact_number }}" required>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">Update Ad</button>
+                    <a href="{{ url_for('my_ads') }}" class="btn-primary" style="background: #6c757d;">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="#" class="footer-link">About</a>
+            <a href="#" class="footer-link">Contact</a>
+            <a href="#" class="footer-link">Privacy Policy</a>
+            <a href="#" class="footer-link">Terms of Service</a>
+        </div>
+        <p>&copy; 2025 RentIt. All rights reserved.</p>
+    </footer>
+
+    <script>
+        function previewImages() {
+            const input = document.getElementById('images');
+            const preview = document.getElementById('uploaded-images');
+            
+            if (input.files) {
+                Array.from(input.files).forEach(file => {
+                    if (file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            const img = document.createElement('img');
+                            img.src = e.target.result;
+                            img.className = 'uploaded-image';
+                            preview.appendChild(img);
+                        }
+                        reader.readAsDataURL(file);
+                    }
+                });
+            }
+        }
+
+        // Add selected class to rental options when clicked
+        document.querySelectorAll('.rental-option input[type="radio"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                document.querySelectorAll('.rental-option').forEach(option => {
+                    option.classList.remove('selected');
+                });
+                if (this.checked) {
+                    this.parentElement.classList.add('selected');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

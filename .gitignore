@@ -1,0 +1,34 @@
+ 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+vrentit/
+
+# Database
+*.sqlite3
+*.db
+instance/
+
+# Environment variables
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Uploads (optional - if you don't want to track uploaded images)
+static/uploads/
+
+# IDE
+.vscode/
+.idea/

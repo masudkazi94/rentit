@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marketplace - Buy and Sell Anything</title>
+   <link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-content">
+            <a href="{{ url_for('index') }}" class="nav-brand">RentIt</a>
+            <div class="nav-links">
+                <a href="{{ url_for('index') }}" class="nav-link active">Home</a>
+                {% if session.user_id %}
+                    <a href="{{ url_for('rent_out') }}" class="nav-link">Rent Out</a>
+                    <a href="{{ url_for('my_ads') }}" class="nav-link">My Ads</a>
+                    <a href="{{ url_for('logout') }}" class="nav-link">Logout ({{ session.username }})</a>
+                {% else %}
+                    <a href="{{ url_for('login') }}" class="nav-link">Login</a>
+                    <a href="{{ url_for('register') }}" class="nav-link">Register</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Search Section -->
+        <div class="search-container">
+            <h2 class="search-title">Find anything you need</h2>
+            <div class="search-box">
+                <input type="text" class="search-input" placeholder="Search for products, brands and more...">
+                <select class="form-select">
+                    <option value="gadhinglaj">Gadhinglaj</option>
+                    <!-- More locations will be added dynamically -->
+                </select>
+                <button class="search-btn">Search</button>
+            </div>
+        </div>
+
+        <!-- Featured Listings -->
+        <section class="listings-section">
+            <div class="section-header">
+                <h2 class="section-title">FEATURED</h2>
+            </div>
+            
+                <!-- In the listings section -->
+                <div class="listings-grid">
+                    {% for listing in recent_listings %}
+                    <div class="listing-card">
+                        <div class="listing-image">
+                            {% if listing.images %}
+                                <img src="{{ listing.images|get_first_image }}" alt="{{ listing.title }}">
+                            {% else %}
+                                <span>No Image</span>
+                            {% endif %}
+                        </div>
+                        <h3 class="listing-title">{{ listing.title }}</h3>
+                        <div class="listing-price">₹ {{ listing.price|format_price }} / {{ listing.rental_period }}</div>                        <div class="listing-details">
+                            <p>{{ listing.location }}</p>
+                            <p>{{ listing.created_at|time_ago }}</p>
+                        </div>
+                        <div class="listing-features">
+                            <span class="feature-tag">{{ listing.category }}</span>
+                            <span class="feature-tag">For Rent</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Featured Listing 2 -->
+                <!--<div class="listing-card">
+                    <div class="listing-image">
+                        <span>Image will appear here</span>
+                    </div>
+                    <h3 class="listing-title">BMW X3 3Drive 20d Luxury Line, 201...</h3>
+                    <div class="listing-price">¥ 15,99,999</div>
+                    <div class="listing-details">
+                        <p>2016 - 63,100 km</p>
+                        <p>EAST NOLAKIA TOWNSHE KOLKATA</p>
+                        <p>NOV 09</p>
+                    </div>
+                </div> -->
+
+                <!-- Regular Listings -->
+                <!--<div class="listing-card">
+                    <div class="listing-image">
+                        <span>Image will appear here</span>
+                    </div>
+                    <h3 class="listing-title">Mahindra Scorpio 2002 turbo Diesel ...</h3>
+                    <div class="listing-price">¥ 1,90,000</div>
+                    <div class="listing-details">
+                        <p>2002 - 226,000 km</p>
+                    </div>
+                </div>
+
+                <div class="listing-card">
+                    <div class="listing-image">
+                        <span>Image will appear here</span>
+                    </div>
+                    <h3 class="listing-title">iPhone 13 12RGb 11 month warranty ...</h3>
+                    <div class="listing-price">¥ 21,000</div>
+                    <div class="listing-details">
+                        <p>SAMUDRAPUR, MAGARASHTRA</p>
+                        <p>5 DAYS AGO</p>
+                    </div>
+                </div>-->
+            </div>
+        </section>
+
+        <!-- Sell Promotion Section -->
+        {% if session.user_id %}
+        <section class="sell-promotion">
+            <div class="section-header">
+                <h3 class="section-title">Want to see your stuff here?</h3>
+                <p class="section-subtitle">Make some extra cash by renting out things in your community. Go on, it's quick and easy.</p>
+                <a href="{{ url_for('rent_out') }}" class="btn-primary">Start Renting</a>
+            </div>
+        </section>
+        {% else %}
+        <section class="sell-promotion">
+            <div class="section-header">
+                <h3 class="section-title">Want to see your stuff here?</h3>
+                <p class="section-subtitle">Make some extra cash by renting out things in your community. Go on, it's quick and easy.</p>
+                <a href="{{ url_for('login') }}" class="btn-primary">Login to Start Renting</a>
+            </div>
+        </section>
+        {% endif %}
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="#" class="footer-link">About</a>
+            <a href="#" class="footer-link">Contact</a>
+            <a href="#" class="footer-link">Privacy Policy</a>
+            <a href="#" class="footer-link">Terms of Service</a>
+        </div>
+        <p>&copy; 2025 Marketplace. All rights reserved.</p>
+    </footer>
+</body>
+</html>

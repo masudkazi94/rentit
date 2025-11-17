@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Results - Marketplace</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-content">
+            <a href="{{ url_for('index') }}" class="nav-brand">RentIt</a>
+            <div class="nav-links">
+                <a href="{{ url_for('index') }}" class="nav-link">Home</a>
+                <a href="{{ url_for('categories') }}" class="nav-link">Categories</a>
+                <a href="{{ url_for('rent_out') }}" class="btn-primary">Start Renting</a>
+                {% if session.user_id %}
+                    <a href="{{ url_for('logout') }}" class="nav-link">Logout ({{ session.username }})</a>
+                {% else %}
+                    <a href="{{ url_for('login') }}" class="nav-link">Login</a>
+                    <a href="{{ url_for('register') }}" class="nav-link">Register</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="search-container">
+            <h2 class="search-title">Search Results</h2>
+            <div class="search-box">
+                <form action="{{ url_for('search') }}" method="GET" class="search-form">
+                    <input type="text" name="q" class="search-input" placeholder="Search for products..." value="{{ query }}">
+                    <select name="location" class="form-select">
+                        <option value="all">All Locations</option>
+                        <option value="Gadhinglaj" {% if location == 'Gadhinglaj' %}selected{% endif %}>Gadhinglaj</option>
+                    </select>
+                    <select name="category" class="form-select">
+                        <option value="all">All Categories</option>
+                        <option value="cars" {% if category == 'cars' %}selected{% endif %}>Cars</option>
+                        <option value="electronics" {% if category == 'electronics' %}selected{% endif %}>Electronics</option>
+                        <option value="property" {% if category == 'property' %}selected{% endif %}>Property</option>
+                    </select>
+                    <button type="submit" class="search-btn">Search</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="search-results">
+            <p class="results-count">Found {{ listings|length }} results for "{{ query }}"</p>
+            
+            {% if listings %}
+            <div class="listings-grid">
+                {% for listing in listings %}
+                <div class="listing-card">
+                    <div class="listing-image">
+                        <img src="{{ listing.images|get_first_image }}" alt="{{ listing.title }}">
+                    </div>
+                    <h3 class="listing-title">{{ listing.title }}</h3>
+                    <div class="listing-price">{{ listing.price|format_price }}</div>
+                    <div class="listing-details">
+                        <p>{{ listing.location }}</p>
+                        <p>{{ listing.created_at|time_ago }}</p>
+                    </div>
+                    <a href="{{ url_for('listing_detail', listing_id=listing.id) }}" class="btn-primary">View Details</a>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="no-listings">
+                <h3>No listings found</h3>
+                <p>Try adjusting your search criteria or <a href="{{ url_for('sell') }}">post a new listing</a></p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="#" class="footer-link">About</a>
+            <a href="#" class="footer-link">Contact</a>
+            <a href="#" class="footer-link">Privacy Policy</a>
+            <a href="#" class="footer-link">Terms of Service</a>
+        </div>
+        <p>&copy; 2025 Marketplace. All rights reserved.</p>
+    </footer>
+</body>
+</html>
